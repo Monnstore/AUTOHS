@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Izinkan Lokasi</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
@@ -19,7 +19,7 @@
   <div id="message"></div>
 
   <script>
-    // Konfigurasi Firebase kamu
+    // Konfigurasi Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBeh7zmo47_qvlo35vJjil7Fn31XipkIV0",
       authDomain: "momon-db593.firebaseapp.com",
@@ -31,9 +31,8 @@
       measurementId: "G-PD0VHY7GRC"
     };
 
-    // Inisialisasi Firebase
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const database = firebase.database();
 
     const btn = document.getElementById("allowBtn");
     const message = document.getElementById("message");
@@ -52,16 +51,22 @@
           const lon = position.coords.longitude;
           const mapsLink = `https://maps.google.com/?q=${lat},${lon}`;
 
-          db.collection("lokasi").add({
+          const data = {
             latitude: lat,
             longitude: lon,
             mapsLink: mapsLink,
             time: new Date().toISOString()
-          }).then(() => {
-            message.innerHTML = `Lokasi berhasil disimpan:<br><a href="${mapsLink}" target="_blank">${mapsLink}</a>`;
-          }).catch((err) => {
-            message.innerText = "Gagal menyimpan ke database: " + err.message;
-          });
+          };
+
+          // Simpan ke realtime database
+          const newRef = database.ref("lokasi").push();
+          newRef.set(data)
+            .then(() => {
+              message.innerHTML = `Lokasi berhasil disimpan:<br><a href="${mapsLink}" target="_blank">${mapsLink}</a>`;
+            })
+            .catch((err) => {
+              message.innerText = "Gagal menyimpan ke database: " + err.message;
+            });
         },
         (error) => {
           message.innerText = "Akses lokasi ditolak atau error.";
