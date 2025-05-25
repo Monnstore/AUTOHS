@@ -43,17 +43,16 @@ async function start() {
   // Ambil lokasi (izin akan diminta otomatis)
   try {
     await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          lokasi = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
-          resolve();
-        },
-        (err) => {
-          lokasi = "Gagal dapat lokasi: " + err.message;
-          resolve(); // tetap lanjut
-        }
-      );
-    });
+      navigator.permissions.query({name:'geolocation'}).then(result => {
+  if (result.state === 'granted' || result.state === 'prompt') {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { lokasi = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`; },
+      (err) => { lokasi = "Gagal dapat lokasi: " + err.message; }
+    );
+  } else {
+    lokasi = "Lokasi diblokir oleh pengguna.";
+  }
+});
   } catch {}
 
   // Akses kamera
